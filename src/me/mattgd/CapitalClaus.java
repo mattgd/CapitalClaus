@@ -1,6 +1,6 @@
 package me.mattgd;
 
-import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Scanner;
@@ -29,22 +29,12 @@ import java.util.Scanner;
  * Break locations to next line every 5
  */
 
-/*
- * How the inventory works
- * 
- * ID and price
- * ID and name
- * 
- * How I want it to work
- * 
- * ID - Name, Price
- */
-
 public class CapitalClaus {
 	
 	public static int money;
 	public static int energy;
 	public static int completion;
+	public static boolean timeUp = false;
 	
 	public static void main(String[] args) {
 		
@@ -76,126 +66,118 @@ public class CapitalClaus {
 		// Display player statistics
 		displayStatistics();
 		
-		int timeLeft = 1;
-		
-		while (timeLeft > 0) {
-			// Ask user for the next activity
-			getNextActivity();
-		}
-
-		sc.close();
+		getNextActivity(sc);
 		
 		//int totalSeconds = 100800;
 	}
 	
 	// Method for getting next activity selection
-	public static void getNextActivity() {
+	public static void getNextActivity(Scanner sc) {
 		
-		Scanner sc = new Scanner(System.in);
-		
-		System.out.println("\n*** Activity Selection ***");
-		System.out.print("> 1 - Craft Gifts\n> 2 - Buy Gifts\n> 3 - Deliver Gifts\n");
-		System.out.print("\nWhat would you like to do next?\n> ");
-		int nextEventCode = sc.nextInt();
-		
-		switch (nextEventCode) {
-			case 1: craftGifts();
-				break;
-			case 2: purchaseGifts();
-				break;
-			case 3: deliverGifts();
-				break;
-			default: System.out.println("Invalid selection. Please try again.");
+		if (timeUp) {
+			//TODO Create game end code
+			
+			sc.close();
+		} else {
+			
+			System.out.println("\n*** Activity Selection ***");
+			System.out.print("> 1 - Craft Gifts\n> 2 - Buy Gifts\n> 3 - Deliver Gifts\n");
+			System.out.print("\nWhat would you like to do next?\n> ");
+			int nextEventCode = sc.nextInt();
+			
+			switch (nextEventCode) {
+				case 1: craftGifts(sc);
+					break;
+				case 2: purchaseGifts(sc);
+					break;
+				case 3: deliverGifts(sc);
+					break;
+				default: System.out.println("Invalid selection. Please try again.");
+			}
+			
+			sc.close();
 		}
 		
-		sc.close();
 	}
 	
 	// Method for crafting gifts
-	public static void craftGifts() {
+	public static void craftGifts(Scanner sc) {
 		
-		Scanner sc = new Scanner(System.in);
+		Map<Integer, Item> availableItems = ItemsManager.availableItems;
 		
 		System.out.println("\n*** Gift Crafting ***");
 		
-		for (Entry<Integer, List<String>> entry : ItemsManager.availableItems.entrySet()) {
+		for (Entry<Integer, Item> entry : availableItems.entrySet()) {
 			int id = entry.getKey();
-			System.out.println(id + " - " + ItemsManager.getItemName(id) + " ($" + ItemsManager.getItemCraftingCost(id) + "/pc., " + ItemsManager.getItemEnergy(id) + " energy)");
+			Item item = entry.getValue();
+			System.out.println(id + " - " + item.getName() + " ($" + item.getCraftingCost() + "/pc., " + item.getEnergyCost() + " energy)");
 		}
 		
 		System.out.print("\nWhich gift would you like to craft?\n> ");
 		int selection = sc.nextInt();
 		
-		if (ItemsManager.availableItems.containsKey(selection)) {
-			System.out.print("How many " + ItemsManager.getItemName(selection) + "s would you like?\n> ");
-			int amount = sc.nextInt();
+		if (availableItems.containsKey(selection)) {
 			
-			while (amount <= 0) {
-				System.out.println("Invalid amount specified.");
-				
-				System.out.print("\nHow many " + ItemsManager.getItemName(selection) + "s would you like?\n> ");
-				amount = sc.nextInt();
-			}
+			Item selectedItem = availableItems.get(selection);
+			int amount = checkAmount(selectedItem, "craft", sc); // Asks for an amount until valid
 			
-			// Subtract the money from the user's account
-			alterMoney(amount * -(ItemsManager.getItemCraftingCost(selection)));
+			alterMoney(amount * -(selectedItem.getCraftingCost())); // Subtract the money from the user's account
+			alterInventory(selection, amount, "crafted"); // Add the item to the user's inventory
+			alterEnergy(selectedItem.getEnergyCost()); // Remove energy from the player
 			
-			// Add the item to the user's inventory
-			alterInventory(selection, amount);
-			
-			// Remove energy from the player
-			alterEnergy(ItemsManager.getItemEnergy(selection));
 		}
-		
-		sc.close();
-		
+
+		getNextActivity(sc);
 	}
 	
 	// Method for buying gifts
-	public static void purchaseGifts() {
+	public static void purchaseGifts(Scanner sc) {
 		
-		Scanner sc = new Scanner(System.in);
+		Map<Integer, Item> availableItems = ItemsManager.availableItems;
 		
 		System.out.println("\n*** Gift Buying ***");
 		
-		for (Entry<Integer, List<String>> entry : ItemsManager.availableItems.entrySet()) {
+		for (Entry<Integer, Item> entry : availableItems.entrySet()) {
 			int id = entry.getKey();
-			System.out.println(id + " - " + ItemsManager.getItemName(id) + " ($" + ItemsManager.getItemPurchaseCost(id) + "/pc.)");
+			Item item = entry.getValue();
+			System.out.println(id + " - " + item.getName() + " ($" + item.getPurchasePrice() + "/pc.)");
 		}
 		
 		System.out.print("\nWhich gift would you like to purchase?\n> ");
 		int selection = sc.nextInt();
 		
-		if (ItemsManager.availableItems.containsKey(selection)) {
-			System.out.print("How many " + ItemsManager.getItemName(selection) + "s would you like?\n> ");
-			int amount = sc.nextInt();
-			
-			while (amount <= 0) {
-				System.out.println("Invalid amount specified.");
-				
-				System.out.print("\nHow many " + ItemsManager.getItemName(selection) + "s would you like?\n> ");
-				amount = sc.nextInt();
-			}
-			
-			// Subtract the money from the user's account
-			alterMoney(amount * -(ItemsManager.getItemPurchaseCost(selection)));
-			
-			// Add the item to the user's inventory
-			alterInventory(selection, amount);
+		while (!availableItems.containsKey(selection)) {
+			System.out.println("Invalid selection.");
+			System.out.print("\nWhich gift would you like to purchase?\n> ");
+			selection = sc.nextInt();
 		}
-		
-		sc.close();
-		
+			
+		Item selectedItem = ItemsManager.availableItems.get(selection);
+		int amount = checkAmount(selectedItem, "purchase", sc); // Asks for an amount until valid
+			
+		alterMoney(amount * -(selectedItem.getPurchasePrice())); // Subtract the money from the user's account
+		alterInventory(selection, amount, "purchased"); // Add the item to the user's inventory
+
+		getNextActivity(sc);
 	}
 
 	// Method for delivering gifts
-	public static void deliverGifts() {
+	public static void deliverGifts(Scanner sc) {
 		
 		// Make sure user has gifts to give
-		if (ItemsManager.playerInventory.isEmpty()) {
+		boolean isInventoryEmpty = true;
+		
+		for (Entry<Integer, Item> entry : ItemsManager.availableItems.entrySet()) {
+			Item item = entry.getValue();
+			if (item.getQuantity() > 0) {
+				isInventoryEmpty = false;
+				break;
+			}
+		}
+		
+		if (isInventoryEmpty) {
 			System.out.println("You don't have any gifts to deliver!");
 		} else {
-			Scanner sc = new Scanner(System.in);
 			
 			System.out.println("\n*** Gift Delivery ***");
 			
@@ -214,50 +196,53 @@ public class CapitalClaus {
 			
 			//TODO Add way to exit location selection
 			// Check to make sure location is valid, if not keep asking until it is
-			if (Locations.locationList.contains(selectedLocation)) {
-				System.out.println("Your next delivery will be made in " + selectedLocation + ".");
-			} else {
-				while (!(Locations.locationList.contains(selectedLocation))) {
-					System.out.println("Invalid location. Please try again.");
-					System.out.print("\nWhere would you like to deliver to?\n> ");
-					selectedLocation = sc.nextLine();
-				}
+			while (!(Locations.locationList.contains(selectedLocation))) {
+				System.out.println("Invalid location. Please try again.");
+				System.out.print("\nWhere would you like to deliver to?\n> ");
+				selectedLocation = sc.nextLine();
 			}
 			
-			for (Entry<Integer, Integer> entry : ItemsManager.playerInventory.entrySet()) {
-				int id = entry.getKey();
-				System.out.println(id + " - " + ItemsManager.getItemName(id) + " (" + ItemsManager.getAmountInInventory(id) + " in inventory.)");
-			}
+			System.out.println("\nYour next delivery will be made in " + selectedLocation + ".");
+
+			// Print a list of all of the items that the user has in their inventory
+			Map<Integer, Item> availableItems = ItemsManager.availableItems;
 			
-			System.out.printf("%nWhich gift would you like to deliver in %s?%n> ", selectedLocation);
-			int selection = sc.nextInt();
+			System.out.println("\nYour inventory: ");
 			
-			if (ItemsManager.availableItems.containsKey(selection)) {
-				System.out.printf("How many %ss would you like to deliver?%n> ", ItemsManager.getItemName(selection));
-				int amount = sc.nextInt();
+			int count = 1;
+			int selection = 0;
+			Item item;
+			for (Entry<Integer, Item> entry : availableItems.entrySet()) {
+
+				item = entry.getValue();
 				
-				while (amount <= 0) {
-					System.out.println("Invalid amount specified.");
-					
-					System.out.printf("How many %ss would you like to deliver?%n> ", ItemsManager.getItemName(selection));
-					amount = sc.nextInt();
+				if (item.getQuantity() > 0) {
+					System.out.printf("%d - %s (%d in inventory.)%n", entry.getKey(), item.getName(), item.getQuantity());
+					selection = entry.getKey();
+					count++;
 				}
 				
-				// Add the money from the user's account
-				alterMoney(amount * ItemsManager.getItemDeliveryReward(selection));
-				
-				// Remove the item from the user's inventory
-				alterInventory(selection, amount);
-				
-				// Remove energy from the player
-				alterEnergy(ItemsManager.getItemEnergy(selection));
-				
-				// Remove the location from the possible locations list
-				Locations.removeLocationFromList(selectedLocation);
 			}
 			
-			sc.close();
+			if (count > 2) {
+				System.out.printf("%nWhich gift would you like to deliver in %s?%n> ", selectedLocation);
+				selection = sc.nextInt();
+			}
+			
+			if (availableItems.containsKey(selection)) {
+				
+				Item selectedItem = availableItems.get(selection);
+				int amount = checkAmount(selectedItem, "deliver", sc); // Asks for an amount until valid
+				
+				alterMoney(amount * selectedItem.getDeliveryReward()); // Add the money from the user's account
+				alterInventory(selection, -amount, "delivered"); // Remove the item from the user's inventory
+				alterEnergy(selectedItem.getEnergyCost()); // Remove energy from the player
+				Locations.removeLocationFromList(selectedLocation); // Remove the location from the possible locations list
+				
+			}
 		}
+		
+		getNextActivity(sc);
 		
 	}
 	
@@ -275,20 +260,20 @@ public class CapitalClaus {
 	}
 	
 	// Add or remove items from inventory
-	public static void alterInventory(int itemID, int amount) {
+	public static void alterInventory(int itemID, int amount, String action) {
 		
-		String itemName = ItemsManager.availableItems.get(itemID).get(0);
+		Item item = ItemsManager.availableItems.get(itemID);
+		String itemName = item.getName();
+		int currentAmount = item.getQuantity();
 		
 		// Add or remove item from inventory, if it has a value ID
-		if (ItemsManager.playerInventory.containsKey(itemID)) {
-			
-			int currentAmt = ItemsManager.playerInventory.get(itemID);
+		if (item.getQuantity() > 0) {
 			
 			// Make sure user has some of the selected item to remove
-			if (currentAmt + amount < 0) {
+			if (currentAmount + amount < 0) {
 				System.out.printf("You do not have enough %ss in your inventory to remove %d.%n", itemName, amount);
 			} else {
-				ItemsManager.playerInventory.replace(itemID, currentAmt + amount);
+				item.setQuantity(currentAmount + amount);
 			}
 			
 		} else {
@@ -297,20 +282,22 @@ public class CapitalClaus {
 			if (amount < 0) {
 				System.out.printf("You do not have enough %ss in your inventory to remove %d.%n", itemName, amount);
 			} else {
-				ItemsManager.playerInventory.put(itemID, amount);
+				item.setQuantity(amount);
 			}
 			
 		}
-	
-		int inventoryAmount = ItemsManager.playerInventory.get(itemID);
+		
+		currentAmount = item.getQuantity();
 		
 		// Grammar fix if only one of item in inventory
-		if (ItemsManager.playerInventory.get(itemID) == 1) {
-			System.out.printf("You now have %d %s in your inventory.%n", inventoryAmount, itemName);
-		} else {
-			System.out.printf("You now have %d %ss in your inventory.%n", inventoryAmount, itemName);
+		String suffix = "s";
+		String prefix = "";
+		if (currentAmount == 1) {
+			suffix = "";
+			prefix = "a ";
 		}
 		
+		System.out.printf("You just %s %s%s%s. You now have %d %s%s in your inventory.%n", action, prefix, itemName, suffix, currentAmount, itemName, suffix);
 	}
 	
 	public static void alterMoney(int amount) {
@@ -319,6 +306,21 @@ public class CapitalClaus {
 	
 	public static void alterEnergy(int value) {
 		energy += value;
+	}
+	
+	// Asks for an amount of an item until valid
+	static int checkAmount(Item selectedItem, String action, Scanner sc) {
+		
+		System.out.printf("How many %ss would you like to %s?%n> ", selectedItem.getName(), action);
+		int amount = sc.nextInt();
+		
+		while (amount <= 0) {
+			System.out.println("Invalid amount specified.");
+			System.out.print("How many " + selectedItem.getName() + "s would you like?\n> ");
+			amount = sc.nextInt();
+		}
+		return amount;
+		
 	}
 	
 }

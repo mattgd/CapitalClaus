@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+//TODO Fix issue with 'Accra' and next first location of next letter showing up in all location categories
+
 public class Locations {
 	
 	public static List<String> locationList = new ArrayList<String>();
